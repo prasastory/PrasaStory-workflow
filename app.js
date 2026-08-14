@@ -1,207 +1,232 @@
-// ============================================================
-//  Prasa Workflow — frontend statis (GitHub Pages)
-//  GANTI dua nilai di bawah:
-//    API_URL = URL Web App dari Deploy Apps Script
-//    SECRET  = sama persis dengan SECRET di appsscript.js
-// ============================================================
+// === Konfigurasi: isi dengan URL Apps Script + SECRET yang sama di appsscript.js ===
+const API_URL = "https://script.google.com/macros/s/AKfycby3MByFZu_cDp7MlpCttvMyM6ba1DIcf8tR-kPn0Vh2P9G9DN6N_i2Vnbp_2Peb87R1/exec";
+const SECRET = "INasangarYTvsygxuahboIHZXOI";
+// =============================================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbyYihD9tlqSS04-n0rYQPd8YGtmiUAdC0sUYcN167LhxbC-hhHAcZhud-kmtDONxZ58/exec';
-const SECRET  = 'SecreTInisangaTRahaSia';
+const STEPS = ["Booked", "Foto Session", "Editing", "Upload Google Drive", "Culling", "Cetak", "Delivered"];
+const SHEETS = { client: "Clients", project: "Projects", workflow: "Workflows" };
 
-const MODEL = {
-  clients: {
-    label: 'Klien',
-    fields: [
-      { key: 'name', label: 'Nama', type: 'text', required: true },
-      { key: 'contact', label: 'Kontak', type: 'text' },
-      { key: 'notes', label: 'Catatan', type: 'text' },
-    ],
-  },
-  projects: {
-    label: 'Proyek',
-    fields: [
-      { key: 'clientId', label: 'Klien', type: 'ref', ref: 'clients', required: true },
-      { key: 'name', label: 'Nama Proyek', type: 'text', required: true },
-      { key: 'date', label: 'Tanggal', type: 'date' },
-      { key: 'status', label: 'Status', type: 'text' },
-      { key: 'notes', label: 'Catatan', type: 'text' },
-    ],
-  },
-  workflows: {
-    label: 'Workflow',
-    fields: [
-      { key: 'projectId', label: 'Proyek', type: 'ref', ref: 'projects', required: true },
-      { key: 'name', label: 'Nama Tahapan', type: 'text', required: true },
-      { key: 'status', label: 'Status', type: 'text' },
-      { key: 'dueDate', label: 'Deadline', type: 'date' },
-      { key: 'step', label: 'Urutan', type: 'number' },
-      { key: 'notes', label: 'Catatan', type: 'text' },
-    ],
-  },
+let cache = { clients: [], projects: [], workflows: [] };
+let editId = { client: null, project: null };
+
+// ---------- API ----------
+async function api(action, entity, data) {
+  const body = JSON.stringify({ secret: SECRET, action, entity, data });
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+    mode: "cors",
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  return json.data;
+}
+
+async function loadAll() {
+  cache.clients = (await api("list", "client")) || [];
+  cache.projects = (await api("list", "project")) || [];
+  cache.workflows = (await api("list", "workflow")) || [];
+}
+
+// ---------- Helpers ----------
+const $ = (s) => document.querySelector(s);
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.remove("hidden"); setTimeout(() => t.classList.add("hidden"), 2200); }
+function clientName(id) { const c = cache.clients.find((x) => x.id === id); return c ? c.name : "-"; }
+
+// ---------- Navigasi ----------
+$("#nav").addEventListener("click", (e) => {
+  const btn = e.target.closest(".nav-item");
+  if (!btn) return;
+  document.querySelectorAll(".nav-item").forEach((b) => b.classList.remove("active"));
+  btn.classList.add("active");
+  const tab = btn.dataset.tab;
+  $("#page-title").textContent = btn.textContent;
+  document.querySelectorAll(".view").forEach((v) => v.classList.add("hidden"));
+  $("#view-" + tab).classList.remove("hidden");
+  if (tab === "dashboard") renderDashboard();
+  if (tab === "client") renderClients();
+  if (tab === "project") renderProjects();
+  if (tab === "workflow") renderWorkflow();
+});
+
+// ---------- Dashboard ----------
+function renderDashboard() {
+  const c = cache.clients.length, p = cache.projects.length;
+  const done = cache.workflows.filter((w) => w.status === "Delivered").length;
+  const cards = [
+    { label: "Clients", value: c, color: "green" },
+    { label: "Projects", value: p, color: "teal" },
+    { label: "Workflow Delivered", value: done, color: "mint" },
+  ];
+  const wrap = $("#stat-cards"); wrap.innerHTML = "";
+  cards.forEach((x) => { const d = el("div", "stat-card " + x.color); d.innerHTML = `<div class="stat-value">${x.value}</div><div class="stat-label">${x.label}</div>`; wrap.appendChild(d); });
+}
+
+// ---------- Clients ----------
+function renderClients() {
+  const q = ($("#search-client").value || "").toLowerCase();
+  const list = cache.clients.filter((c) => c.name.toLowerCase().includes(q));
+  const box = $("#client-list"); box.innerHTML = "";
+  if (!list.length) { box.appendChild(el("p", "hint", "Belum ada client.")); return; }
+  list.forEach((c) => {
+    const card = el("div", "data-card");
+    card.innerHTML = `<div class="data-head"><strong>${c.name}</strong><span class="row-actions"><button class="btn-sm" data-edit="${c.id}">Edit</button><button class="btn-sm danger" data-del="${c.id}">Hapus</button></span></div>
+      <div class="data-body">${c.email ? "✉ " + c.email + "<br>" : ""}${c.phone ? "☎ " + c.phone + "<br>" : ""}${c.ig ? "📷 " + c.ig + "<br>" : ""}${c.address ? "📍 " + c.address : ""}</div>`;
+    box.appendChild(card);
+  });
+  box.querySelectorAll("[data-edit]").forEach((b) => b.onclick = () => openClientForm(b.dataset.edit));
+  box.querySelectorAll("[data-del]").forEach((b) => b.onclick = () => delClient(b.dataset.del));
+}
+
+function openClientForm(id) {
+  editId.client = id || null;
+  $("#client-form-title").textContent = id ? "Edit Client" : "Tambah Client";
+  const c = cache.clients.find((x) => x.id === id);
+  $("#c-name").value = c ? c.name : "";
+  $("#c-email").value = c ? c.email || "" : "";
+  $("#c-phone").value = c ? c.phone || "" : "";
+  $("#c-ig").value = c ? c.ig || "" : "";
+  $("#c-address").value = c ? c.address || "" : "";
+  $("#c-notes").value = c ? c.notes || "" : "";
+  $("#form-client").classList.remove("hidden");
+}
+
+$("#add-client").onclick = () => openClientForm(null);
+$("#cancel-client").onclick = () => $("#form-client").classList.add("hidden");
+$("#search-client").oninput = renderClients;
+$("#form-client").onsubmit = async (e) => {
+  e.preventDefault();
+  const data = { name: $("#c-name").value, email: $("#c-email").value, phone: $("#c-phone").value, ig: $("#c-ig").value, address: $("#c-address").value, notes: $("#c-notes").value };
+  try {
+    if (editId.client) await api("update", "client", { id: editId.client, ...data });
+    else await api("create", "client", data);
+    await loadAll(); renderClients(); $("#form-client").classList.add("hidden"); toast("Tersimpan");
+  } catch (err) { toast("Gagal: " + err.message); }
 };
 
-let CACHE = { clients: [], projects: [], workflows: [] };
-let current = 'clients';
-let editing = null; // { entity, id }
+async function delClient(id) {
+  if (!confirm("Hapus client ini?")) return;
+  try { await api("delete", "client", { id }); await loadAll(); renderClients(); toast("Dihapus"); } catch (err) { toast("Gagal: " + err.message); }
+}
 
-async function api(action, entity, data, id) {
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // text/plain = hindari CORS preflight
-    body: JSON.stringify({ secret: SECRET, action, entity, data: data || {}, id }),
+// ---------- Projects ----------
+function fillClientSelect() {
+  const sel = $("#p-client"); sel.innerHTML = '<option value="">Pilih client</option>';
+  cache.clients.forEach((c) => sel.appendChild(el("option", null, c.name)).setAttribute("value", c.id));
+}
+
+function renderProjects() {
+  fillClientSelect();
+  const q = ($("#search-project").value || "").toLowerCase();
+  const list = cache.projects.filter((p) => p.title.toLowerCase().includes(q));
+  const box = $("#project-list"); box.innerHTML = "";
+  if (!list.length) { box.appendChild(el("p", "hint", "Belum ada project.")); return; }
+  list.forEach((p) => {
+    const card = el("div", "data-card");
+    card.innerHTML = `<div class="data-head"><strong>${p.title}</strong><span class="row-actions"><button class="btn-sm" data-edit="${p.id}">Edit</button><button class="btn-sm danger" data-del="${p.id}">Hapus</button></span></div>
+      <div class="data-body">👤 ${clientName(p.client_id)}<br>${p.date ? "📅 " + p.date + "<br>" : ""}${p.location ? "📍 " + p.location + "<br>" : ""}${p.package ? "🎁 " + p.package + "<br>" : ""}${p.photographer ? "📸 " + p.photographer + "<br>" : ""}${p.editor ? "🖌 " + p.editor + "<br>" : ""}${p.status ? "● " + p.status : ""}</div>`;
+    box.appendChild(card);
   });
-  const j = await res.json();
-  if (j.error) throw new Error(j.error);
-  return j;
+  box.querySelectorAll("[data-edit]").forEach((b) => b.onclick = () => openProjectForm(b.dataset.edit));
+  box.querySelectorAll("[data-del]").forEach((b) => b.onclick = () => delProject(b.dataset.del));
 }
 
-async function refresh(entity) {
-  CACHE[entity] = await api('list', entity);
-  renderSection(entity);
+function openProjectForm(id) {
+  editId.project = id || null;
+  $("#project-form-title").textContent = id ? "Edit Project" : "Tambah Project";
+  const p = cache.projects.find((x) => x.id === id);
+  fillClientSelect();
+  if (p) {
+    $("#p-client").value = p.client_id || "";
+    $("#p-title").value = p.title || "";
+    $("#p-date").value = p.date || "";
+    $("#p-location").value = p.location || "";
+    $("#p-package").value = p.package || "";
+    $("#p-photographer").value = p.photographer || "";
+    $("#p-editor").value = p.editor || "";
+    $("#p-status").value = p.status || "";
+  } else {
+    ["p-client","p-title","p-date","p-location","p-photographer","p-editor"].forEach((i) => $(i ? "#" + i : i).value = "");
+    $("#p-package").value = ""; $("#p-status").value = "";
+  }
+  $("#form-project").classList.remove("hidden");
 }
 
-function nameOf(entity, id) {
-  const r = (CACHE[entity] || []).find((x) => x.id === id);
-  return r ? (r.name || r.id) : '-';
+$("#add-project").onclick = () => openProjectForm(null);
+$("#cancel-project").onclick = () => $("#form-project").classList.add("hidden");
+$("#search-project").oninput = renderProjects;
+$("#form-project").onsubmit = async (e) => {
+  e.preventDefault();
+  const data = { client_id: $("#p-client").value, title: $("#p-title").value, date: $("#p-date").value, location: $("#p-location").value, package: $("#p-package").value, photographer: $("#p-photographer").value, editor: $("#p-editor").value, status: $("#p-status").value };
+  try {
+    if (editId.project) await api("update", "project", { id: editId.project, ...data });
+    else {
+      const created = await api("create", "project", data);
+      // buat 7 workflow step otomatis
+      for (const s of STEPS) await api("create", "workflow", { project_id: created.id, step: s, status: s === "Booked" ? "Done" : "Todo", due: "", notes: "" });
+    }
+    await loadAll(); renderProjects(); $("#form-project").classList.add("hidden"); toast("Tersimpan");
+  } catch (err) { toast("Gagal: " + err.message); }
+};
+
+async function delProject(id) {
+  if (!confirm("Hapus project (dan workflow-nya)?")) return;
+  try {
+    const wfs = cache.workflows.filter((w) => w.project_id === id);
+    for (const w of wfs) await api("delete", "workflow", { id: w.id });
+    await api("delete", "project", { id });
+    await loadAll(); renderProjects(); toast("Dihapus");
+  } catch (err) { toast("Gagal: " + err.message); }
 }
 
-function renderTabs() {
-  const nav = document.getElementById('tabs');
-  nav.innerHTML = '';
-  Object.keys(MODEL).forEach((e) => {
-    const b = document.createElement('button');
-    b.textContent = MODEL[e].label;
-    b.className = 'tab' + (e === current ? ' active' : '');
-    b.onclick = () => selectTab(e);
-    nav.appendChild(b);
-  });
+// ---------- Workflow ----------
+function fillWfProject() {
+  const sel = $("#wf-project"); sel.innerHTML = '<option value="">Pilih project</option>';
+  cache.projects.forEach((p) => sel.appendChild(el("option", null, p.title)).setAttribute("value", p.id));
 }
 
-function selectTab(e) {
-  current = e;
-  editing = null;
-  renderTabs();
-  renderSection(e);
-}
-
-async function init() {
-  renderTabs();
-  await refresh('clients');
-  await refresh('projects');
-  await refresh('workflows');
-  renderSection(current);
-}
-
-function renderSection(entity) {
-  const m = MODEL[entity];
-  const sec = document.getElementById('section');
-  sec.innerHTML = '';
-
-  const title = document.createElement('h2');
-  title.textContent = m.label;
-  sec.appendChild(title);
-
-  // --- form ---
-  const form = document.createElement('form');
-  form.className = 'card';
-  m.fields.forEach((f) => {
-    const wrap = document.createElement('div');
-    wrap.className = 'field';
-    const lab = document.createElement('label');
-    lab.textContent = f.label;
-    wrap.appendChild(lab);
-    let inp;
-    if (f.type === 'ref') {
-      inp = document.createElement('select');
-      const o0 = document.createElement('option');
-      o0.value = ''; o0.textContent = '— pilih —';
-      inp.appendChild(o0);
-      (CACHE[f.ref] || []).forEach((r) => {
-        const o = document.createElement('option');
-        o.value = r.id; o.textContent = r.name || r.id;
-        inp.appendChild(o);
-      });
+function renderWorkflow() {
+  fillWfProject();
+  const pid = $("#wf-project").value;
+  const board = $("#wf-board"); board.innerHTML = "";
+  if (!pid) { board.appendChild(el("p", "hint", "Pilih project untuk lihat workflow.")); return; }
+  const wfs = cache.workflows.filter((w) => String(w.project_id) === String(pid)).sort((a, b) => STEPS.indexOf(a.step) - STEPS.indexOf(b.step));
+  STEPS.forEach((step) => {
+    const w = wfs.find((x) => x.step === step);
+    const col = el("div", "step-col");
+    col.innerHTML = `<div class="step-title">${step}</div>`;
+    const card = el("div", "step-card " + (w ? (w.status === "Done" ? "done" : "todo") : "empty"));
+    if (w) {
+      card.innerHTML = `<div class="step-status">${w.status === "Done" ? "✓ Done" : "○ Todo"}</div>${w.due ? "<div class='step-due'>📅 " + w.due + "</div>" : ""}${w.notes ? "<div class='step-notes'>" + w.notes + "</div>" : ""}<div class="row-actions"><button class='btn-sm' data-toggle='" + w.id + "'>Toggle</button><button class='btn-sm danger' data-wdel='" + w.id + "'>✕</button></div>`;
     } else {
-      inp = document.createElement('input');
-      inp.type = f.type || 'text';
+      card.innerHTML = `<button class='btn-sm add-step' data-add='" + pid + "' data-step='" + step + "'>+ Add</button>`;
     }
-    inp.name = f.key;
-    wrap.appendChild(inp);
-    form.appendChild(wrap);
+    col.appendChild(card); board.appendChild(col);
   });
-  const btn = document.createElement('button');
-  btn.type = 'submit';
-  btn.textContent = editing ? 'Simpan Perubahan' : 'Tambah';
-  form.appendChild(btn);
-  if (editing) {
-    const cancel = document.createElement('button');
-    cancel.type = 'button';
-    cancel.textContent = 'Batal';
-    cancel.onclick = () => { editing = null; renderSection(entity); };
-    form.appendChild(cancel);
-  }
-  form.onsubmit = async (ev) => {
-    ev.preventDefault();
-    const data = {};
-    for (const f of m.fields) {
-      const v = form[f.key].value;
-      if (f.required && !v) { alert(f.label + ' wajib diisi'); return; }
-      if (v !== '') data[f.key] = v;
-    }
-    try {
-      if (editing) { await api('update', entity, data, editing.id); editing = null; }
-      else { await api('create', entity, data); }
-      await refresh(entity);
-    } catch (err) { alert('Error: ' + err.message); }
-  };
-  sec.appendChild(form);
-
-  // --- table ---
-  const rows = CACHE[entity] || [];
-  if (rows.length) {
-    const table = document.createElement('table');
-    table.className = 'card';
-    const thead = document.createElement('tr');
-    m.fields.forEach((f) => {
-      const th = document.createElement('th');
-      th.textContent = f.label; thead.appendChild(th);
-    });
-    const thA = document.createElement('th');
-    thA.textContent = 'Aksi'; thead.appendChild(thA);
-    table.appendChild(thead);
-    rows.forEach((r) => {
-      const tr = document.createElement('tr');
-      m.fields.forEach((f) => {
-        const td = document.createElement('td');
-        td.textContent = f.type === 'ref' ? nameOf(f.ref, r[f.key]) : (r[f.key] || '');
-        tr.appendChild(td);
-      });
-      const td = document.createElement('td');
-      const eb = document.createElement('button');
-      eb.textContent = 'Edit';
-      eb.onclick = () => startEdit(entity, r);
-      td.appendChild(eb);
-      const db = document.createElement('button');
-      db.textContent = 'Hapus';
-      db.onclick = async () => {
-        if (confirm('Hapus data ini?')) { await api('delete', entity, {}, r.id); await refresh(entity); }
-      };
-      td.appendChild(db);
-      tr.appendChild(td);
-      table.appendChild(tr);
-    });
-    sec.appendChild(table);
-  }
+  board.querySelectorAll("[data-toggle]").forEach((b) => b.onclick = () => toggleStep(JSON.parse(b.dataset.toggle)));
+  board.querySelectorAll("[data-wdel]").forEach((b) => b.onclick = () => delStep(JSON.parse(b.dataset.wdel)));
+  board.querySelectorAll("[data-add]").forEach((b) => b.onclick = () => addStep(JSON.parse(b.dataset.add), b.dataset.step));
 }
 
-function startEdit(entity, r) {
-  editing = { entity, id: r.id };
-  renderSection(entity);
-  const m = MODEL[entity];
-  m.fields.forEach((f) => {
-    const el = document.querySelector('#section form [name="' + f.key + '"]');
-    if (el) el.value = r[f.key] || '';
-  });
+async function toggleStep(id) {
+  const w = cache.workflows.find((x) => x.id === id);
+  await api("update", "workflow", { id, status: w.status === "Done" ? "Todo" : "Done" });
+  await loadAll(); renderWorkflow();
 }
+async function addStep(pid, step) {
+  await api("create", "workflow", { project_id: pid, step, status: "Todo", due: "", notes: "" });
+  await loadAll(); renderWorkflow();
+}
+async function delStep(id) {
+  await api("delete", "workflow", { id });
+  await loadAll(); renderWorkflow();
+}
+$("#wf-project").onchange = renderWorkflow;
 
-init();
+// ---------- Init ----------
+(async function init() {
+  try { await loadAll(); renderDashboard(); }
+  catch (err) { toast("Gagal muat data: " + err.message); }
+})();
