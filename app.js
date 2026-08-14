@@ -1,5 +1,5 @@
 const API_URL =
-  "https://script.google.com/macros/s/AKfycby2XSe91_ErZflGUdqAN4Y-bLy8UBLfH3pYp911ZE0BAo4JZ-obslyt3_xBU4lSbIn7/exec";
+  "https://script.google.com/macros/s/AKfycbwMby982t1lzg4UHmV_acApjVuwW3f8ugOSEPdfyshdTXxgx07UAEXY6K942PUgWKaJ/exec";
 
 // Secret tidak di-hardcode di sini agar tidak kelihatan di source publik.
 // Masukkan password yang sama dengan SECRET di appsscript.js (server-side).
