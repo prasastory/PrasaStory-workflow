@@ -263,6 +263,22 @@
 
         <section id="calendar-page" class="page hidden">
 
+            <div id="calendar-nav" class="toolbar" style="justify-content:center; align-items:center; gap:15px; flex-wrap:wrap;">
+                <button id="cal-view-toggle" type="button" style="width:auto; background:var(--primary); color:white;">Tampilan: Tahunan</button>
+
+                <div id="cal-nav-year" style="display:flex; align-items:center; gap:15px;">
+                    <button id="cal-prev" type="button" style="width:auto;">‹</button>
+                    <h2 id="cal-year" style="margin:0;"></h2>
+                    <button id="cal-next" type="button" style="width:auto;">›</button>
+                </div>
+
+                <div id="cal-nav-month" class="hidden" style="display:flex; align-items:center; gap:15px;">
+                    <button id="cal-month-prev" type="button" style="width:auto;">‹</button>
+                    <h2 id="cal-month-label" style="margin:0;"></h2>
+                    <button id="cal-month-next" type="button" style="width:auto;">›</button>
+                </div>
+            </div>
+
             <div id="calendar-list"></div>
 
         </section>
