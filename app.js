@@ -1,5 +1,5 @@
 // === Konfigurasi: isi dengan URL Apps Script + SECRET yang sama di appsscript.js ===
-const API_URL = "https://script.google.com/macros/s/AKfycbzUymJRIGliJui6I9s2S_CxnHxANecX4H9s7wkk7I2Q2rvF0mV2AD07la5bKYoPXOGo/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbypLKTZFxWzNhy6Dl2LGwq76Nxgov05KSusR5pbEsPbGXT8yLzIpYoEBl9ABCMqs6d6/exec";
 const SECRET = "INasangarYTvsygxuahboIHZXO";
 // =============================================================================
 
