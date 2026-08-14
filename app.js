@@ -1,6 +1,6 @@
 // === Konfigurasi: isi dengan URL Apps Script + SECRET yang sama di appsscript.js ===
 const API_URL = "https://script.google.com/macros/s/AKfycbyUoAvjXw1mR_NMnNwWF6miRpRum_Z5p2sf55WXfJTGmiALQmTEPii8LJRuD3gYDBM/exec";
-const SECRET = "INasangarYTvsygxuahboIHZXO";
+const SECRET = "INasangarYTvsygxuahboIHZXOI";
 // =============================================================================
 
 const STEPS = ["Booked", "Foto Session", "Editing", "Upload Google Drive", "Culling", "Cetak", "Delivered"];
