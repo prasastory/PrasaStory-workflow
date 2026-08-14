@@ -10,19 +10,23 @@ let cache = { clients: [], projects: [], workflows: [] };
 let editId = { client: null, project: null };
 
 // ---------- API ----------
-async function api(action, entity, data) {
-  const body = JSON.stringify({ secret: SECRET, action, entity, data });
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body,
-    mode: "cors",
-  });
-  const json = await res.json();
-  if (json.error) throw new Error(json.error);
-  return json.data;
+async function api(action, body = {}) {
+  if (!API_URL) throw new Error("URL Web App kosong — isi API_URL di app.js");
+  let res;
+  try {
+    res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ action, secret: SECRET, ...body }),
+    });
+  } catch (e) {
+    throw new Error("Network error: " + e.message + " — cek API_URL & deploy Access:Anyone");
+  }
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || "API error");
+  return data.data;
 }
-
 async function loadAll() {
   cache.clients = (await api("list", "client")) || [];
   cache.projects = (await api("list", "project")) || [];
