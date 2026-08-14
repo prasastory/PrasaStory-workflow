@@ -1,10 +1,10 @@
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbyr2oW3ET-yne_n2TrO9aJYUcSwpru0siGzhlWNVNp77krlQ0rUSiWLWurAfsdmhbHi/exec";
+  "PASTE_GOOGLE_APPS_SCRIPT_URL";
 
 const SECRET =
   "INasangarYTvsygxuahboIHZXOI";
 
-const STEPS = [
+const WORKFLOW_STEPS = [
   "Booked",
   "Foto Session",
   "Editing",
@@ -26,13 +26,14 @@ let editProjectId = null;
 const $ = (s) => document.querySelector(s);
 
 function toast(message) {
-  const t = $("#toast");
+  const toast = $("#toast");
 
-  t.textContent = message;
-  t.classList.remove("hidden");
+  toast.textContent = message;
+
+  toast.classList.add("show");
 
   setTimeout(() => {
-    t.classList.add("hidden");
+    toast.classList.remove("show");
   }, 2000);
 }
 
@@ -41,347 +42,319 @@ async function api(
   entity,
   data = {}
 ) {
-  const res = await fetch(API_URL, {
-    method: "POST",
+  const response = await fetch(
+    API_URL,
+    {
+      method: "POST",
 
-    headers: {
-      "Content-Type": "text/plain"
-    },
+      headers: {
+        "Content-Type":
+          "text/plain"
+      },
 
-    body: JSON.stringify({
-      secret: SECRET,
-      action,
-      entity,
-      data
-    })
-  });
+      body: JSON.stringify({
+        secret: SECRET,
+        action,
+        entity,
+        data
+      })
+    }
+  );
 
-  const json = await res.json();
+  const json =
+    await response.json();
 
   if (!json.ok) {
-    throw new Error(json.error);
+    throw new Error(
+      json.error
+    );
   }
 
   return json.data;
 }
 
-async function loadAll() {
+async function loadData() {
   cache.clients =
-    (await api(
+    await api(
       "list",
       "client"
-    )) || [];
+    );
 
   cache.projects =
-    (await api(
+    await api(
       "list",
       "project"
-    )) || [];
+    );
 
   cache.workflows =
-    (await api(
+    await api(
       "list",
       "workflow"
-    )) || [];
+    );
 }
 
-function clientName(id) {
-  const client =
-    cache.clients.find(
-      (c) =>
-        String(c.id) ===
-        String(id)
-    );
-
-  return client
-    ? client.name
-    : "-";
-}
-
-$("#nav").addEventListener(
-  "click",
-  (e) => {
-    const btn =
-      e.target.closest(
-        ".nav-item"
-      );
-
-    if (!btn) return;
-
-    document
-      .querySelectorAll(
-        ".nav-item"
-      )
-      .forEach((b) =>
-        b.classList.remove(
-          "active"
-        )
-      );
-
-    btn.classList.add(
-      "active"
-    );
-
-    const tab =
-      btn.dataset.tab;
-
-    $("#page-title").textContent =
-      btn.textContent;
-
-    document
-      .querySelectorAll(
-        ".view"
-      )
-      .forEach((v) =>
-        v.classList.add(
-          "hidden"
-        )
-      );
-
-    const view = $(
-      "#view-" + tab
-    );
-
-    if (view) {
-      view.classList.remove(
+function showPage(page) {
+  document
+    .querySelectorAll(
+      ".page"
+    )
+    .forEach((p) =>
+      p.classList.add(
         "hidden"
-      );
-    }
-
-    if (tab === "dashboard")
-      renderDashboard();
-
-    if (tab === "client")
-      renderClients();
-
-    if (tab === "project")
-      renderProjects();
-
-    if (tab === "workflow")
-      renderWorkflow();
-  }
-);
-
-function renderDashboard() {
-  const wrap =
-    $("#stat-cards");
-
-  wrap.innerHTML = "";
-
-  const delivered =
-    cache.workflows.filter(
-      (w) =>
-        w.step ===
-          "Delivered" &&
-        w.status === "Done"
-    ).length;
-
-  const cards = [
-    {
-      label: "Clients",
-      value:
-        cache.clients.length,
-      color: "green"
-    },
-
-    {
-      label: "Projects",
-      value:
-        cache.projects.length,
-      color: "teal"
-    },
-
-    {
-      label: "Delivered",
-      value: delivered,
-      color: "mint"
-    }
-  ];
-
-  cards.forEach((c) => {
-    const div =
-      document.createElement(
-        "div"
-      );
-
-    div.className =
-      "stat-card " +
-      c.color;
-
-    div.innerHTML = `
-      <div class="stat-value">
-        ${c.value}
-      </div>
-
-      <div class="stat-label">
-        ${c.label}
-      </div>
-    `;
-
-    wrap.appendChild(div);
-  });
-}
-
-function renderClients() {
-  const box =
-    $("#client-list");
-
-  const keyword =
-    $("#search-client")
-      .value
-      .toLowerCase();
-
-  const clients =
-    cache.clients.filter(
-      (c) =>
-        c.name
-          .toLowerCase()
-          .includes(keyword)
+      )
     );
-
-  box.innerHTML = "";
-
-  clients.forEach((c) => {
-    const card =
-      document.createElement(
-        "div"
-      );
-
-    card.className =
-      "data-card";
-
-    card.innerHTML = `
-      <div class="data-head">
-        <strong>${c.name}</strong>
-
-        <span class="row-actions">
-          <button
-            class="btn-sm edit-client"
-            data-id="${c.id}">
-            Edit
-          </button>
-
-          <button
-            class="btn-sm danger delete-client"
-            data-id="${c.id}">
-            Hapus
-          </button>
-        </span>
-      </div>
-
-      <div class="data-body">
-        ${c.email || ""}
-        <br>
-        ${c.phone || ""}
-        <br>
-        ${c.ig || ""}
-      </div>
-    `;
-
-    box.appendChild(card);
-  });
 
   document
     .querySelectorAll(
-      ".edit-client"
+      ".menu-btn"
     )
-    .forEach((b) => {
-      b.onclick = () => {
-        openClient(
-          b.dataset.id
-        );
-      };
-    });
-
-  document
-    .querySelectorAll(
-      ".delete-client"
-    )
-    .forEach((b) => {
-      b.onclick = () =>
-        deleteClient(
-          b.dataset.id
-        );
-    });
-}
-
-function openClient(id) {
-  editClientId = id;
-
-  const c =
-    cache.clients.find(
-      (x) =>
-        String(x.id) ===
-        String(id)
+    .forEach((b) =>
+      b.classList.remove(
+        "active"
+      )
     );
 
-  $("#form-client")
+  $("#" + page + "-page")
     .classList.remove(
       "hidden"
     );
 
-  $("#c-name").value =
-    c?.name || "";
+  document
+    .querySelector(
+      `[data-page="${page}"]`
+    )
+    .classList.add(
+      "active"
+    );
 
-  $("#c-email").value =
-    c?.email || "";
+  $("#page-title").textContent =
+    page
+      .charAt(0)
+      .toUpperCase() +
+    page.slice(1);
 
-  $("#c-phone").value =
-    c?.phone || "";
+  if (page === "clients") {
+    renderClients();
+  }
 
-  $("#c-ig").value =
-    c?.ig || "";
+  if (page === "projects") {
+    renderProjects();
+  }
 
-  $("#c-address").value =
-    c?.address || "";
+  if (page === "workflow") {
+    renderWorkflow();
+  }
 
-  $("#c-notes").value =
-    c?.notes || "";
+  if (page === "tasks") {
+    renderTasks();
+  }
+
+  if (page === "calendar") {
+    renderCalendar();
+  }
+
+  if (page === "reports") {
+    renderReports();
+  }
 }
 
-$("#add-client").onclick =
+document
+  .querySelectorAll(
+    ".menu-btn"
+  )
+  .forEach((button) => {
+    button.onclick = () =>
+      showPage(
+        button.dataset.page
+      );
+  });
+
+function renderDashboard() {
+  $(
+    "#total-clients"
+  ).textContent =
+    cache.clients.length;
+
+  $(
+    "#total-projects"
+  ).textContent =
+    cache.projects.length;
+
+  const finished =
+    cache.projects.filter(
+      (p) =>
+        cache.workflows.some(
+          (w) =>
+            String(
+              w.project_id
+            ) ===
+              String(p.id) &&
+            w.step ===
+              "Delivered" &&
+            w.status ===
+              "Done"
+        )
+    );
+
+  $(
+    "#finished-projects"
+  ).textContent =
+    finished.length;
+
+  $(
+    "#active-projects"
+  ).textContent =
+    cache.projects.length -
+    finished.length;
+}
+
+function renderClients() {
+  const list =
+    $("#client-list");
+
+  list.innerHTML = "";
+
+  const keyword =
+    $("#client-search")
+      .value
+      .toLowerCase();
+
+  cache.clients
+    .filter((c) =>
+      c.name
+        .toLowerCase()
+        .includes(keyword)
+    )
+    .forEach((client) => {
+      const card =
+        document.createElement(
+          "div"
+        );
+
+      card.className =
+        "list-card";
+
+      card.innerHTML = `
+        <div class="list-header">
+          <strong>${client.name}</strong>
+
+          <div class="actions">
+            <button
+              class="edit-btn"
+              onclick="editClient(${client.id})">
+              Edit
+            </button>
+
+            <button
+              class="delete-btn"
+              onclick="deleteClient(${client.id})">
+              Hapus
+            </button>
+          </div>
+        </div>
+
+        <div>
+          ${client.phone}
+        </div>
+      `;
+
+      list.appendChild(card);
+    });
+}
+
+$("#client-search").oninput =
+  renderClients;
+
+$("#add-client-btn").onclick =
   () => {
     editClientId = null;
 
-    $("#form-client")
-      .reset();
+    $("#client-form").reset();
 
-    $("#form-client")
+    $("#client-form")
       .classList.remove(
         "hidden"
       );
   };
 
-$("#cancel-client").onclick =
+$("#cancel-client-btn").onclick =
   () => {
-    $("#form-client")
+    $("#client-form")
       .classList.add(
         "hidden"
       );
   };
 
-$("#search-client").oninput =
-  renderClients;
+window.editClient =
+  function (id) {
+    editClientId = id;
 
-$("#form-client").onsubmit =
+    const client =
+      cache.clients.find(
+        (c) => c.id == id
+      );
+
+    $("#client-name").value =
+      client.name;
+
+    $("#client-phone").value =
+      client.phone;
+
+    $("#client-email").value =
+      client.email;
+
+    $("#client-instagram").value =
+      client.ig;
+
+    $("#client-address").value =
+      client.address;
+
+    $("#client-notes").value =
+      client.notes;
+
+    $("#client-form")
+      .classList.remove(
+        "hidden"
+      );
+  };
+
+window.deleteClient =
+  async function (id) {
+    if (!confirm("Hapus?")) {
+      return;
+    }
+
+    await api(
+      "delete",
+      "client",
+      { id }
+    );
+
+    await refresh();
+  };
+
+$("#client-form").onsubmit =
   async (e) => {
     e.preventDefault();
 
     const data = {
       name:
-        $("#c-name").value,
-      email:
-        $("#c-email")
+        $("#client-name")
           .value,
       phone:
-        $("#c-phone")
+        $("#client-phone")
           .value,
-      ig: $("#c-ig").value,
+      email:
+        $("#client-email")
+          .value,
+      ig:
+        $("#client-instagram")
+          .value,
       address:
-        $("#c-address")
+        $("#client-address")
           .value,
       notes:
-        $("#c-notes")
+        $("#client-notes")
           .value
     };
 
@@ -402,56 +375,33 @@ $("#form-client").onsubmit =
       );
     }
 
-    await loadAll();
+    await refresh();
 
-    renderClients();
-
-    $("#form-client")
+    $("#client-form")
       .classList.add(
         "hidden"
       );
-
-    toast("Tersimpan");
   };
 
-async function deleteClient(
-  id
-) {
-  if (!confirm("Hapus?"))
-    return;
-
-  await api(
-    "delete",
-    "client",
-    { id }
-  );
-
-  await loadAll();
-
-  renderClients();
-
-  toast("Dihapus");
-}
-
-function fillProjectClients() {
+function fillClientSelect() {
   const select =
-    $("#p-client");
+    $("#project-client");
 
   select.innerHTML =
-    '<option value="">Pilih client</option>';
+    "";
 
   cache.clients.forEach(
-    (c) => {
+    (client) => {
       const option =
         document.createElement(
           "option"
         );
 
       option.value =
-        c.id;
+        client.id;
 
       option.textContent =
-        c.name;
+        client.name;
 
       select.appendChild(
         option
@@ -461,73 +411,161 @@ function fillProjectClients() {
 }
 
 function renderProjects() {
-  fillProjectClients();
+  fillClientSelect();
 
-  const box =
+  const list =
     $("#project-list");
 
-  box.innerHTML = "";
+  list.innerHTML = "";
 
   cache.projects.forEach(
-    (p) => {
+    (project) => {
       const card =
         document.createElement(
           "div"
         );
 
       card.className =
-        "data-card";
+        "list-card";
 
       card.innerHTML = `
-        <div class="data-head">
+        <div class="list-header">
+
           <strong>
-            ${p.title}
+            ${project.title}
           </strong>
+
+          <div class="actions">
+
+            <button
+              class="delete-btn"
+              onclick="deleteProject(${project.id})">
+
+              Hapus
+
+            </button>
+
+          </div>
+
         </div>
 
-        <div class="data-body">
-          Client:
-          ${clientName(
-            p.client_id
-          )}
-          <br>
-
-          Tanggal:
-          ${p.date}
-
-          <br>
-
-          Lokasi:
-          ${p.location}
+        <div>
+          ${project.location}
         </div>
+
       `;
 
-      box.appendChild(card);
-    }
-  );
+      list.appendChild(card);
+    });
 
   fillWorkflowProjects();
 }
 
+$("#add-project-btn").onclick =
+  () => {
+    editProjectId = null;
+
+    $("#project-form")
+      .reset();
+
+    fillClientSelect();
+
+    $("#project-form")
+      .classList.remove(
+        "hidden"
+      );
+  };
+
+$("#cancel-project-btn").onclick =
+  () => {
+    $("#project-form")
+      .classList.add(
+        "hidden"
+      );
+  };
+
+window.deleteProject =
+  async function (id) {
+    await api(
+      "delete",
+      "project",
+      { id }
+    );
+
+    await refresh();
+  };
+
+$("#project-form").onsubmit =
+  async (e) => {
+    e.preventDefault();
+
+    const data = {
+      client_id:
+        $("#project-client")
+          .value,
+
+      title:
+        $("#project-title")
+          .value,
+
+      date:
+        $("#project-date")
+          .value,
+
+      location:
+        $(
+          "#project-location"
+        ).value,
+
+      package:
+        $(
+          "#project-package"
+        ).value,
+
+      photographer:
+        $(
+          "#project-photographer"
+        ).value,
+
+      editor:
+        $("#project-editor")
+          .value
+    };
+
+    await api(
+      "create",
+      "project",
+      data
+    );
+
+    await refresh();
+
+    $("#project-form")
+      .classList.add(
+        "hidden"
+      );
+  };
+
 function fillWorkflowProjects() {
-  const select =
-    $("#wf-project");
+  const select = $(
+    "#workflow-project-select"
+  );
 
   select.innerHTML =
-    '<option value="">Pilih project</option>';
+    '<option value="">Pilih Project</option>';
 
   cache.projects.forEach(
-    (p) => {
+    (project) => {
       const option =
         document.createElement(
           "option"
         );
 
       option.value =
-        p.id;
+        project.id;
 
       option.textContent =
-        p.title;
+        project.title;
 
       select.appendChild(
         option
@@ -537,131 +575,227 @@ function fillWorkflowProjects() {
 }
 
 function renderWorkflow() {
-  const board =
-    $("#wf-board");
+  fillWorkflowProjects();
 
-  const pid =
-    $("#wf-project")
-      .value;
+  const board =
+    $("#workflow-board");
 
   board.innerHTML = "";
 
-  if (!pid) return;
+  const projectId =
+    $(
+      "#workflow-project-select"
+    ).value;
+
+  if (!projectId) {
+    return;
+  }
 
   const workflows =
     cache.workflows.filter(
       (w) =>
         String(
           w.project_id
-        ) === String(pid)
+        ) ===
+        String(projectId)
     );
 
-  STEPS.forEach((step) => {
-    const item =
-      workflows.find(
-        (w) =>
-          w.step === step
-      );
-
-    const column =
+  workflows.forEach((w) => {
+    const card =
       document.createElement(
         "div"
       );
 
-    column.className =
-      "step-col";
+    card.className =
+      "workflow-column";
 
-    column.innerHTML = `
-      <div class="step-title">
-        ${step}
+    card.innerHTML = `
+      <div class="workflow-title">
+        ${w.step}
       </div>
 
-      <div class="step-card ${
-        item?.status ===
-        "Done"
-          ? "done"
-          : "todo"
-      }">
+      <div class="workflow-card">
 
-      ${
-        item
-          ? `
-          <div class="step-status">
-            ${item.status}
-          </div>
+        <div class="workflow-status">
+          ${w.status}
+        </div>
 
-          <button
-            class="btn-sm toggle"
-            data-id="${item.id}">
-            Toggle
-          </button>
-        `
-          : ""
-      }
+        ${
+          w.status !== "Done"
+            ? `
+            <button
+              onclick="finishWorkflow(${w.id})">
+              Selesaikan
+            </button>
+          `
+            : ""
+        }
 
       </div>
     `;
 
-    board.appendChild(
-      column
-    );
+    board.appendChild(card);
   });
+}
 
-  document
-    .querySelectorAll(
-      ".toggle"
+$("#workflow-project-select")
+  .onchange =
+  renderWorkflow;
+
+window.finishWorkflow =
+  async function (id) {
+    const current =
+      cache.workflows.find(
+        (w) => w.id == id
+      );
+
+    const projectSteps =
+      cache.workflows
+        .filter(
+          (w) =>
+            w.project_id ==
+            current.project_id
+        )
+        .sort(
+          (a, b) =>
+            WORKFLOW_STEPS.indexOf(
+              a.step
+            ) -
+            WORKFLOW_STEPS.indexOf(
+              b.step
+            )
+        );
+
+    const index =
+      projectSteps.findIndex(
+        (w) => w.id == id
+      );
+
+    await api(
+      "update",
+      "workflow",
+      {
+        id,
+        status: "Done"
+      }
+    );
+
+    if (
+      index <
+      projectSteps.length - 1
+    ) {
+      await api(
+        "update",
+        "workflow",
+        {
+          id:
+            projectSteps[
+              index + 1
+            ].id,
+
+          status:
+            "Progress"
+        }
+      );
+    }
+
+    await refresh();
+  };
+
+function renderTasks() {
+  const list =
+    $("#task-list");
+
+  list.innerHTML = "";
+
+  cache.workflows
+    .filter(
+      (w) =>
+        w.status ===
+        "Progress"
     )
-    .forEach((b) => {
-      b.onclick =
-        async () => {
-          const workflow =
-            cache.workflows.find(
-              (w) =>
-                String(
-                  w.id
-                ) ===
-                String(
-                  b.dataset.id
-                )
-            );
+    .forEach((w) => {
+      const project =
+        cache.projects.find(
+          (p) =>
+            p.id ==
+            w.project_id
+        );
 
-          await api(
-            "update",
-            "workflow",
-            {
-              id:
-                workflow.id,
-              status:
-                workflow.status ===
-                "Done"
-                  ? "Todo"
-                  : "Done"
-            }
-          );
+      const card =
+        document.createElement(
+          "div"
+        );
 
-          await loadAll();
+      card.className =
+        "list-card";
 
-          renderWorkflow();
+      card.innerHTML = `
+        ${project.title}
+        <br>
+        ${w.step}
+      `;
 
-          renderDashboard();
-        };
+      list.appendChild(card);
     });
 }
 
-$("#wf-project").onchange =
-  renderWorkflow;
+function renderCalendar() {
+  const list =
+    $("#calendar-list");
 
-(async function () {
-  try {
-    await loadAll();
+  list.innerHTML = "";
 
-    renderDashboard();
+  cache.projects.forEach(
+    (p) => {
+      const card =
+        document.createElement(
+          "div"
+        );
 
-    renderClients();
+      card.className =
+        "list-card";
 
-    renderProjects();
+      card.innerHTML = `
+        ${p.date}
+        <br>
+        ${p.title}
+      `;
 
-  } catch (e) {
-    toast(e.message);
-  }
+      list.appendChild(card);
+    });
+}
+
+function renderReports() {
+  const list =
+    $("#report-list");
+
+  list.innerHTML = `
+    <div class="list-card">
+      Total project:
+      ${cache.projects.length}
+    </div>
+  `;
+}
+
+async function refresh() {
+  await loadData();
+
+  renderDashboard();
+
+  renderClients();
+
+  renderProjects();
+
+  renderWorkflow();
+
+  renderTasks();
+
+  renderCalendar();
+
+  renderReports();
+}
+
+(async () => {
+  await refresh();
 })();
