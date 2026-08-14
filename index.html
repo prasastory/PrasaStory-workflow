@@ -1,17 +1,106 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Prasa Workflow</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <h1>Prasa Workflow</h1>
-    <nav id="tabs"></nav>
-  </header>
-  <main id="section"></main>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="brand">
+        <span class="logo">P</span>
+        <span class="brand-name">Prasa Workflow</span>
+      </div>
+      <nav id="nav">
+        <button class="nav-item active" data-tab="dashboard">Dashboard</button>
+        <button class="nav-item" data-tab="project">Project</button>
+        <button class="nav-item" data-tab="client">Client</button>
+        <button class="nav-item" data-tab="workflow">Workflow</button>
+        <button class="nav-item" data-tab="task">Task</button>
+        <button class="nav-item" data-tab="kalender">Kalender</button>
+        <button class="nav-item" data-tab="laporan">Laporan</button>
+        <button class="nav-item" data-tab="notifikasi">Notifikasi</button>
+      </nav>
+    </aside>
+
+    <main id="main">
+      <header id="topbar">
+        <h1 id="page-title">Dashboard</h1>
+        <span class="user-badge">Admin</span>
+      </header>
+
+      <!-- DASHBOARD -->
+      <section class="view" id="view-dashboard">
+        <div class="cards-row" id="stat-cards"></div>
+        <p class="hint">Ringkasan data kamu. Tab lain untuk kelola data.</p>
+      </section>
+
+      <!-- CLIENT -->
+      <section class="view hidden" id="view-client">
+        <div class="toolbar">
+          <button class="btn-primary" id="add-client">+ Client Baru</button>
+          <input class="search" id="search-client" placeholder="Cari client..." />
+        </div>
+        <form class="card hidden" id="form-client">
+          <h2 id="client-form-title">Tambah Client</h2>
+          <div class="field"><label>Nama *</label><input id="c-name" required placeholder="Nama client" /></div>
+          <div class="field"><label>Email</label><input id="c-email" type="email" placeholder="client@email.com" /></div>
+          <div class="field"><label>No HP</label><input id="c-phone" placeholder="08xxxxxxxxxx" /></div>
+          <div class="field"><label>Instagram</label><input id="c-ig" placeholder="@username" /></div>
+          <div class="field"><label>Alamat</label><input id="c-address" placeholder="Alamat lengkap" /></div>
+          <div class="field"><label>Catatan</label><textarea id="c-notes" placeholder="Catatan tambahan..."></textarea></div>
+          <div class="form-actions">
+            <button class="btn-primary" type="submit">Simpan</button>
+            <button class="btn-ghost" type="button" id="cancel-client">Batal</button>
+          </div>
+        </form>
+        <div id="client-list"></div>
+      </section>
+
+      <!-- PROJECT -->
+      <section class="view hidden" id="view-project">
+        <div class="toolbar">
+          <button class="btn-primary" id="add-project">+ Project Baru</button>
+          <input class="search" id="search-project" placeholder="Cari project..." />
+        </div>
+        <form class="card hidden" id="form-project">
+          <h2 id="project-form-title">Tambah Project</h2>
+          <div class="field"><label>Client *</label><select id="p-client" required></select></div>
+          <div class="field"><label>Nama Project *</label><input id="p-title" required placeholder="Wedding Rina" /></div>
+          <div class="field"><label>Tanggal</label><input id="p-date" type="date" placeholder="dd/mm/yyyy" /></div>
+          <div class="field"><label>Lokasi</label><input id="p-location" placeholder="Jakarta" /></div>
+          <div class="field"><label>Paket</label><select id="p-package"><option value="">Pilih paket</option><option>Gold</option><option>Platinum</option></select></div>
+          <div class="field"><label>Fotografer</label><input id="p-photographer" placeholder="Nama fotografer" /></div>
+          <div class="field"><label>Editor</label><input id="p-editor" placeholder="Nama editor" /></div>
+          <div class="field"><label>Status</label><select id="p-status"><option value="">Pilih status</option><option>Baru</option><option>Berjalan</option><option>Selesai</option><option>Batal</option></select></div>
+          <div class="form-actions">
+            <button class="btn-primary" type="submit">Simpan</button>
+            <button class="btn-ghost" type="button" id="cancel-project">Batal</button>
+          </div>
+        </form>
+        <div id="project-list"></div>
+      </section>
+
+      <!-- WORKFLOW -->
+      <section class="view hidden" id="view-workflow">
+        <div class="toolbar">
+          <label class="filter-label">Project:</label>
+          <select id="wf-project"></select>
+        </div>
+        <div class="steps-board" id="wf-board"></div>
+      </section>
+
+      <!-- PLACEHOLDERS -->
+      <section class="view hidden" id="view-task"><div class="card"><h2>Task</h2><p class="hint">Fitur task belum aktif di paket ini.</p></div></section>
+      <section class="view hidden" id="view-kalender"><div class="card"><h2>Kalender</h2><p class="hint">Fitur kalender belum aktif di paket ini.</p></div></section>
+      <section class="view hidden" id="view-laporan"><div class="card"><h2>Laporan</h2><p class="hint">Fitur laporan belum aktif di paket ini.</p></div></section>
+      <section class="view hidden" id="view-notifikasi"><div class="card"><h2>Notifikasi</h2><p class="hint">Fitur notifikasi belum aktif di paket ini.</p></div></section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
   <script src="app.js"></script>
 </body>
 </html>
