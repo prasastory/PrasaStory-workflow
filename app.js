@@ -1,8 +1,12 @@
 const API_URL =
-  "PASTE_GOOGLE_APPS_SCRIPT_URL";
+  "https://script.google.com/macros/s/AKfycbwv8ZLRLKuJJrGszcu_0jyhVrl4axbjlhLxQGFbW0f0GKuqxOogd-4PLHv-8kwffQ5D/exec";
 
+// Secret tidak di-hardcode di sini agar tidak kelihatan di source publik.
+// Masukkan password yang sama dengan SECRET di appsscript.js (server-side).
 const SECRET =
-  "INasangarYTvsygxuahboIHZXOI";
+  prompt(
+    "Masukkan password aplikasi:"
+  );
 
 const WORKFLOW_STEPS = [
   "Booked",
@@ -388,7 +392,7 @@ function fillClientSelect() {
     $("#project-client");
 
   select.innerHTML =
-    "";
+    '<option value="">Pilih Client</option>';
 
   cache.clients.forEach(
     (client) => {
@@ -418,8 +422,18 @@ function renderProjects() {
 
   list.innerHTML = "";
 
-  cache.projects.forEach(
-    (project) => {
+  const keyword =
+    $("#project-search")
+      .value
+      .toLowerCase();
+
+  cache.projects
+    .filter((p) =>
+      p.title
+        .toLowerCase()
+        .includes(keyword)
+    )
+    .forEach((project) => {
       const card =
         document.createElement(
           "div"
@@ -438,11 +452,15 @@ function renderProjects() {
           <div class="actions">
 
             <button
+              class="edit-btn"
+              onclick="editProject(${project.id})">
+              Edit
+            </button>
+
+            <button
               class="delete-btn"
               onclick="deleteProject(${project.id})">
-
               Hapus
-
             </button>
 
           </div>
@@ -484,8 +502,51 @@ $("#cancel-project-btn").onclick =
       );
   };
 
+$("#project-search").oninput =
+  renderProjects;
+
+window.editProject =
+  function (id) {
+    editProjectId = id;
+
+    const project =
+      cache.projects.find(
+        (p) => p.id == id
+      );
+
+    $("#project-client").value =
+      project.client_id;
+
+    $("#project-title").value =
+      project.title;
+
+    $("#project-date").value =
+      project.date;
+
+    $("#project-location").value =
+      project.location;
+
+    $("#project-package").value =
+      project.package;
+
+    $("#project-photographer").value =
+      project.photographer;
+
+    $("#project-editor").value =
+      project.editor;
+
+    $("#project-form")
+      .classList.remove(
+        "hidden"
+      );
+  };
+
 window.deleteProject =
   async function (id) {
+    if (!confirm("Hapus?")) {
+      return;
+    }
+
     await api(
       "delete",
       "project",
@@ -498,6 +559,16 @@ window.deleteProject =
 $("#project-form").onsubmit =
   async (e) => {
     e.preventDefault();
+
+    if (
+      !$("#project-client").value
+    ) {
+      toast(
+        "Pilih client dulu"
+      );
+
+      return;
+    }
 
     const data = {
       client_id:
@@ -532,11 +603,21 @@ $("#project-form").onsubmit =
           .value
     };
 
-    await api(
-      "create",
-      "project",
-      data
-    );
+    if (editProjectId) {
+      data.id = editProjectId;
+
+      await api(
+        "update",
+        "project",
+        data
+      );
+    } else {
+      await api(
+        "create",
+        "project",
+        data
+      );
+    }
 
     await refresh();
 
@@ -740,60 +821,294 @@ function renderTasks() {
     });
 }
 
+let calendarYear =
+  new Date().getFullYear();
+
+let calendarMonth =
+  new Date().getMonth();
+
+let calendarView =
+  "year"; // "year" | "month"
+
+const WEEKDAYS = [
+  "Min",
+  "Sen",
+  "Sel",
+  "Rab",
+  "Kam",
+  "Jum",
+  "Sab"
+];
+
+function buildMonthCard(
+  year,
+  month,
+  large
+) {
+  const byDate = {};
+
+  cache.projects.forEach((p) => {
+    if (p.date) {
+      (byDate[p.date] =
+        byDate[p.date] || []).push(
+        p.title
+      );
+    }
+  });
+
+  const monthName =
+    new Date(
+      year,
+      month,
+      1
+    ).toLocaleString("id", {
+      month: "long"
+    });
+
+  const first = new Date(
+    year,
+    month,
+    1
+  ).getDay();
+
+  const days = new Date(
+    year,
+    month + 1,
+    0
+  ).getDate();
+
+  let cells = "";
+
+  for (let i = 0; i < first; i++) {
+    cells +=
+      '<div class="cal-empty"></div>';
+  }
+
+  for (let d = 1; d <= days; d++) {
+    const key = `${year}-${String(
+      month + 1
+    ).padStart(2, "0")}-${String(
+      d
+    ).padStart(2, "0")}`;
+
+    const items = byDate[key]
+      ? byDate[key]
+          .map(
+            (t) =>
+              `<small>${t}</small>`
+          )
+          .join("")
+      : "";
+
+    cells += `<div class="cal-cell">${d}${items}</div>`;
+  }
+
+  const card =
+    document.createElement(
+      "div"
+    );
+
+  card.className =
+    "cal-month";
+
+  if (large) {
+    card.style.maxWidth =
+      "520px";
+
+    card.style.margin =
+      "0 auto";
+  }
+
+  card.innerHTML = `
+    <h4 style="margin:0 0 10px 0; color:var(--primary);">
+      ${monthName} ${year}
+    </h4>
+
+    <div class="cal-weekdays">
+      ${WEEKDAYS.map(
+        (w) => `<span>${w}</span>`
+      ).join("")}
+    </div>
+
+    <div class="cal-grid"${
+      large
+        ? ' style="gap:8px;"'
+        : ""
+    }>${cells}</div>
+  `;
+
+  return card;
+}
+
 function renderCalendar() {
   const list =
     $("#calendar-list");
 
   list.innerHTML = "";
 
-  cache.projects.forEach(
-    (p) => {
-      const card =
-        document.createElement(
-          "div"
-        );
+  $(
+    "#cal-nav-year"
+  ).classList.toggle(
+    "hidden",
+    calendarView !== "year"
+  );
 
-      card.className =
-        "list-card";
+  $(
+    "#cal-nav-month"
+  ).classList.toggle(
+    "hidden",
+    calendarView !== "month"
+  );
 
-      card.innerHTML = `
-        ${p.date}
-        <br>
-        ${p.title}
-      `;
+  $(
+    "#cal-view-toggle"
+  ).textContent =
+    "Tampilan: " +
+    (calendarView === "year"
+      ? "Tahunan"
+      : "Bulanan");
 
-      list.appendChild(card);
-    });
+  if (calendarView === "year") {
+    $(
+      "#cal-year"
+    ).textContent =
+      calendarYear;
+
+    for (let m = 0; m < 12; m++) {
+      list.appendChild(
+        buildMonthCard(
+          calendarYear,
+          m,
+          false
+        )
+      );
+    }
+  } else {
+    $(
+      "#cal-month-label"
+    ).textContent =
+      new Date(
+        calendarYear,
+        calendarMonth,
+        1
+      ).toLocaleString("id", {
+        month: "long",
+        year: "numeric"
+      });
+
+    list.appendChild(
+      buildMonthCard(
+        calendarYear,
+        calendarMonth,
+        true
+      )
+    );
+  }
 }
+
+$("#cal-view-toggle").onclick =
+  () => {
+    calendarView =
+      calendarView === "year"
+        ? "month"
+        : "year";
+
+    renderCalendar();
+  };
+
+$("#cal-prev").onclick = () => {
+  calendarYear--;
+  renderCalendar();
+};
+
+$("#cal-next").onclick = () => {
+  calendarYear++;
+  renderCalendar();
+};
+
+$("#cal-month-prev").onclick =
+  () => {
+    if (calendarMonth === 0) {
+      calendarMonth = 11;
+      calendarYear--;
+    } else {
+      calendarMonth--;
+    }
+
+    renderCalendar();
+  };
+
+$("#cal-month-next").onclick =
+  () => {
+    if (calendarMonth === 11) {
+      calendarMonth = 0;
+      calendarYear++;
+    } else {
+      calendarMonth++;
+    }
+
+    renderCalendar();
+  };
 
 function renderReports() {
   const list =
     $("#report-list");
 
+  const gold =
+    cache.projects.filter(
+      (p) => p.package === "Gold"
+    ).length;
+
+  const platinum =
+    cache.projects.filter(
+      (p) =>
+        p.package === "Platinum"
+    ).length;
+
+  const finished =
+    cache.projects.filter((p) =>
+      cache.workflows.some(
+        (w) =>
+          String(w.project_id) ===
+            String(p.id) &&
+          w.step === "Delivered" &&
+          w.status === "Done"
+      )
+    ).length;
+
   list.innerHTML = `
-    <div class="list-card">
-      Total project:
-      ${cache.projects.length}
-    </div>
+    <div class="list-card">Total Client: ${cache.clients.length}</div>
+    <div class="list-card">Total Project: ${cache.projects.length}</div>
+    <div class="list-card">Project Selesai: ${finished}</div>
+    <div class="list-card">Paket: Gold (${gold}) | Platinum (${platinum})</div>
   `;
 }
 
 async function refresh() {
-  await loadData();
+  try {
+    await loadData();
 
-  renderDashboard();
+    renderDashboard();
 
-  renderClients();
+    renderClients();
 
-  renderProjects();
+    renderProjects();
 
-  renderWorkflow();
+    renderWorkflow();
 
-  renderTasks();
+    renderTasks();
 
-  renderCalendar();
+    renderCalendar();
 
-  renderReports();
+    renderReports();
+  } catch (err) {
+    toast(
+      "Gagal muat data: " +
+        err.message
+    );
+
+    console.error(err);
+  }
 }
 
 (async () => {
